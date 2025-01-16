@@ -1,0 +1,78 @@
+#cloud-config
+package_update: true
+packages:
+- jq
+- pipx
+- build-essential
+- python3-dev
+- python3-openstackclient
+- python3-swiftclient
+- awscli
+snap:
+  commands:
+  - snap install vault
+  - snap install terraform --classic
+  - snap install charmcraft --classic
+  - snap install lxd
+  - snap install juju --channel 3.6/stable
+  - snap install jhack
+  - snap install yq
+  - snap install microk8s --channel 1.31-strict
+users:
+  - default
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBFgYNZOrHQWgirA7Ccdy+T7hWxLWKHCSCO0Imc3xbyr jpuente@thinkpad
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMFKI1Vo3YbhW2oB0pyJvdqgm22Epu299UeHw2EoopYb jpuente@thinkpadpersonal
+
+runcmd:
+  - snap connect jhack:dot-local-share-juju snapd
+  # microk8s
+  - |
+    set -x
+    usermod -a -G microk8s ubuntu
+    usermod -a -G snap_microk8s ubuntu
+    microk8s status --wait-ready
+    # microk8s enable dns
+    # I am having problems in here, not sure why.
+    microk8s enable dns:8.8.8.8
+    microk8s.kubectl rollout status deployments/coredns -n kube-system -w --timeout=600s
+    microk8s enable hostpath-storage
+    microk8s enable rbac
+    microk8s enable registry
+    microk8s.kubectl rollout status deployment.apps/registry -n container-registry -w --timeout=600s
+    IPADDR=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc')
+    microk8s enable metallb:$IPADDR-$IPADDR
+    microk8s.kubectl rollout status daemonset.apps/speaker -n metallb-system -w --timeout=600s
+  # lxd
+  - |
+    lxd init --auto
+    # ipv6 and juju are problematic
+    lxc network set lxdbr0 ipv6.address=none bridge.mtu=1400
+    adduser ubuntu lxd
+  # juju
+  - |
+    sudo -u ubuntu mkdir -p /home/ubuntu/.local/share
+    sudo -iu ubuntu juju bootstrap localhost lxd
+    # There should be a microk8s cloud. Add it to the lxd controller.
+    # I think by default microk8s is local (127.0.0.1). Get the real thing with correct ip.
+    sudo -iu ubuntu mkdir /home/ubuntu/.kube
+    sudo -iu ubuntu bash -c 'microk8s config > /home/ubuntu/.kube/config'
+    sudo -iu ubuntu juju add-k8s mymicrok8s --controller lxd
+  - sudo -u ubuntu pipx install tox
+  - sudo -u ubuntu pipx ensurepath
+  - |
+    sudo -i -u ubuntu bash <<'EOF'
+    set -x
+    cat <<EOT >> "${HOME}"/.bashrc
+    # . <( cat ~/demo-openrc )
+    export REPOSITORY=$REPOSITORY
+    export TOKEN=$TOKEN
+    export PROXY_IP=$PROXY_IP
+    # Hardcoded for now
+    export REGION=RegionOne
+    EOT
+    aws configure set default.s3.signature_version s3v4
+    EOF

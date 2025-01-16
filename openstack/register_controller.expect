@@ -1,0 +1,21 @@
+#!/usr/bin/expect -f
+
+# Define variables
+set timeout 20
+set token [lindex $argv 0]
+set new_password [lindex $argv 1]
+
+spawn juju register $token
+
+# Expect the prompt for the new password
+expect "Enter a new password:" 
+send "$new_password\r"
+expect "Confirm password:" 
+send "$new_password\r"
+expect "Enter a name for this controller"
+# just use the default one
+send "\r"
+
+# Wait for the process to complete
+expect eof
+
