@@ -82,25 +82,25 @@ runcmd:
     EOF
   - systemctl start user@1000
   - |
-    # New shell to get groups 
+    # Install openstack
     sudo -i -u ubuntu bash <<'EOF'
       set -euo pipefail
       set -x
       # grrr. without this it fails
       export XDG_RUNTIME_DIR=/run/user/1000
       export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+      echo groups: $( groups )
       cd "${HOME}"
 
       # storage requires ceph
       if ${ENABLE_CEPH}
       then
         cat combined-openstack-manifest > openstack-manifest
-        sunbeam cluster bootstrap --role control,compute,storage -m openstack-manifest || :
+        sunbeam cluster bootstrap --role control,compute,storage -m openstack-manifest
       else
         cat combined-openstack-manifest | yq 'del(.core.config.microceph_config)' > openstack-manifest
         sunbeam cluster bootstrap -m openstack-manifest --role control,compute
       fi
-
       sunbeam configure -m openstack-manifest --openrc demo-openrc
 
       . <(sunbeam openrc)
@@ -128,7 +128,6 @@ runcmd:
       juju wait-for application traefik-vault
       juju wait-for application vault
 
-      
       SECRET_ID_CA_CERTIFICATE_VAULT=$(juju secrets --format=json | jq -r 'to_entries | .[] | select(.value.owner == "certificates-vault").key')
       juju show-secret ${SECRET_ID_CA_CERTIFICATE_VAULT} --reveal --format json | jq -r 'to_entries.[].value.content.Data."ca-certificate"' > ~/vault_ca.pem
 
