@@ -3,7 +3,7 @@
 set -x
 set -euo pipefail
 
-RISK=beta
+RISK=candidate
 RAM_MEMORY=42GiB
 ROOT_DISK_SIZE=500GiB
 ENABLE_CEPH=true

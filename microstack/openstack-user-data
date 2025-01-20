@@ -6,6 +6,7 @@ fqdn: openstack.delapuente.es
 manage_etc_hosts: localhost
 packages:
 - jq
+- retry
 
 snap:
   commands:
@@ -69,6 +70,7 @@ runcmd:
   - |
     # Install openstack
     sudo -i -u ubuntu bash <<'EOF'
+      set -euo pipefail
       set -x
       cd "${HOME}"
       export EXTERNAL_IFNAME="$(ip --json a | jq '.[] | select(.address == "00:14:4f:f8:00:02")' | jq -r '.ifname')"
@@ -76,13 +78,24 @@ runcmd:
       cp /snap/openstack/current/etc/manifests/${RISK}.yml .
       yq eval-all '. as $item ireduce ({}; . * $item)' ./${RISK}.yml ./openstack-manifest-deployment > combined-openstack-manifest
 
-      sunbeam prepare-node-script | bash -x && newgrp snap_daemon
+      sunbeam prepare-node-script --bootstrap | bash -x
+    EOF
+  - systemctl start user@1000
+  - |
+    # New shell to get groups 
+    sudo -i -u ubuntu bash <<'EOF'
+      set -euo pipefail
+      set -x
+      # grrr. without this it fails
+      export XDG_RUNTIME_DIR=/run/user/1000
+      export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+      cd "${HOME}"
 
       # storage requires ceph
       if ${ENABLE_CEPH}
       then
         cat combined-openstack-manifest > openstack-manifest
-        sunbeam cluster bootstrap --role control,compute,storage -m openstack-manifest
+        sunbeam cluster bootstrap --role control,compute,storage -m openstack-manifest || :
       else
         cat combined-openstack-manifest | yq 'del(.core.config.microceph_config)' > openstack-manifest
         sunbeam cluster bootstrap -m openstack-manifest --role control,compute
