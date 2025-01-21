@@ -1,0 +1,28 @@
+#cloud-config
+# https://microstack.run/docs/single-node
+
+package_update: true
+fqdn: openstack.delapuente.es
+manage_etc_hosts: localhost
+packages:
+- jq
+- retry
+
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
+
+snap:
+  commands:
+   - snap install openstack --channel 2024.1/${RISK}
+   - snap install yq
+
+users:
+  - default
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBFgYNZOrHQWgirA7Ccdy+T7hWxLWKHCSCO0Imc3xbyr jpuente@thinkpad
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMFKI1Vo3YbhW2oB0pyJvdqgm22Epu299UeHw2EoopYb jpuente@thinkpadpersonal
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG5oXzCEbfWreZjbsta69lZFYo5Z8LmzqG5q6DR69sy+ jpuente@big.delapuente.es
