@@ -3,20 +3,17 @@ core:
     proxy:
       proxy_required: false
     bootstrap:
-      management_cidr: 192.168.20.0/24
+      management_cidr: ${MANAGEMENT_CIDR}
     region: RegionOne
     k8s-addons:
-      loadbalancer: 192.168.20.10-192.168.20.29
-    addons:
-      metallb: 192.168.20.10-192.168.20.29
+      loadbalancer: 172.16.1.201-172.16.1.240
     external_network:
-      nic: ${EXTERNAL_IFNAME}
-      cidr: 192.168.20.0/24
-      gateway: 192.168.20.1
-      range: 192.168.20.30-192.168.20.69
+      cidr: 172.16.2.0/24
+      gateway: 172.16.2.1
+      range: 172.16.2.2-172.16.2.254
       network_type: flat
     user:
-      remote_access_location: remote
+      remote_access_location: local
       run_demo_setup: true
       username: demo
       password: demo
@@ -30,8 +27,6 @@ core:
     charms:
       glance-k8s:
         storage:
-          local-repository: "25G"
+          local-repository: "30G"
         config:
-          image-size-cap: 10G
-runcmd:
-  - sudo -iu ubuntu bash -l -c "sunbeam prepare-node-script --bootstrap | bash -x"
+          image-size-cap: 15G
