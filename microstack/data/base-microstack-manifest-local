@@ -3,7 +3,7 @@ core:
     proxy:
       proxy_required: false
     bootstrap:
-      management_cidr: ${MANAGEMENT_CIDR}
+      management_cidr: ${LOCAL_MANAGEMENT_CIDR}
     region: RegionOne
     k8s-addons:
       loadbalancer: 172.16.1.201-172.16.1.240

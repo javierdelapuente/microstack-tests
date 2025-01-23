@@ -3,14 +3,26 @@
 set -x
 set -euo pipefail
 
-RISK=candidate
-RAM_MEMORY=42GiB
-ROOT_DISK_SIZE=500GiB
+RISK=${RISK:-candidate}
+RAM_MEMORY=${RAM_MEMORY:-42GiB}
+ROOT_DISK_SIZE=${ROOT_DISK_SIZE:-500GiB}
 
-REMOTE_ACCESS_LOCATION=true
+REMOTE_ACCESS_LOCATION=${REMOTE_ACCESS_LOCATION:-true}
 
-ENABLE_CEPH=true
-CEPH_DISK_SIZE=500GiB
+ENABLE_CEPH=${ENABLE_CEPH:-true}
+CEPH_DISK_SIZE=${CEPH_DISK_SIZE:-500GiB}
+
+ENABLE_VAULT=${ENABLE_VAULT:-true}
+ENABLE_IMAGES_SYNC=${ENABLE_IMAGES_SYNC:-true}
+
+echo RISK $RISK
+echo RAM_MEMORY $RAM_MEMORY
+echo ROOT_DISK_SIZE $ROOT_DISK_SIZE
+echo REMOTE_ACCESS_LOCATION $REMOTE_ACCESS_LOCATION
+echo ENABLE_CEPH $ENABLE_CEPH
+echo CEPH_DISK_SIZE $CEPH_DISK_SIZE
+echo ENABLE_VAULT $ENABLE_VAULT
+echo ENABLE_IMAGES_SYNC $ENABLE_IMAGES_SYNC
 
 export RISK
 export ENABLE_CEPH
@@ -21,27 +33,27 @@ DEBIAN_FRONTEND=noninteractive sudo apt-get install retry -y
 # enable ipv4 forwarding in the host...
 sudo sysctl -w net.ipv4.ip_forward=1
 
-# not sure if all of this is necessary, but...
-sudo ufw route allow in on osbr0
-sudo ufw route allow in on osbr0
-sudo ufw route allow out on osbr0
-
 lxc delete openstack --force || :
-lxc network delete osbr0 || :
 
-# dns.mode to assign to the same bridge. We could have two bridges instead.
-lxc network create osbr0 ipv6.address=none ipv4.address=192.168.20.1/24 ipv4.dhcp.ranges=192.168.20.200-192.168.20.240 ipv4.firewall=false ipv4.nat=false dns.mode=none || :
-
-if ${REMOTE_ACCESS_LOCATION}
+init_args=( --config=user.user-data="$(cat ./data/openstack-user-data | envsubst '$RISK,$ENABLE_CEPH' )" )
+if "${REMOTE_ACCESS_LOCATION}"
 then
-    :
-else
-    :
+    init_args+=( --config=user.network-config="$(cat ./data/openstack-network-config)" )
+    # not sure if all of this is necessary, but...
+    sudo ufw route allow in on osbr0
+    sudo ufw route allow in on osbr0
+    sudo ufw route allow out on osbr0
+    lxc network delete osbr0 || :
+    # dns.mode to assign to the same bridge. We could have two bridges instead.
+    lxc network create osbr0 ipv6.address=none ipv4.address=192.168.20.1/24 ipv4.dhcp.ranges=192.168.20.200-192.168.20.240 ipv4.firewall=false ipv4.nat=false dns.mode=none || :
 fi
-    
-lxc init ubuntu:24.04 openstack --vm -c limits.cpu=12 -c limits.memory=${RAM_MEMORY} -d root,size=${ROOT_DISK_SIZE} --config=user.network-config="$(cat ./data/openstack-network-config)" --config=user.user-data="$(cat ./data/openstack-user-data | envsubst '$RISK,$ENABLE_CEPH' )"
-lxc config device add openstack eth0 nic nictype=bridged parent=osbr0 name=eth0 hwaddr=00:14:4F:F8:00:01
-lxc config device add openstack eth1 nic nictype=bridged parent=osbr0 name=eth1 hwaddr=00:14:4F:F8:00:02
+
+lxc init ubuntu:24.04 openstack --vm -c limits.cpu=12 -c limits.memory=${RAM_MEMORY} -d root,size=${ROOT_DISK_SIZE} "${init_args[@]}"
+if "${REMOTE_ACCESS_LOCATION}"
+then
+    lxc config device add openstack eth0 nic nictype=bridged parent=osbr0 name=eth0 hwaddr=00:14:4F:F8:00:01
+    lxc config device add openstack eth1 nic nictype=bridged parent=osbr0 name=eth1 hwaddr=00:14:4F:F8:00:02
+fi
 
 # This is for ceph. There has to be a lxcpool storage defined.
 if ${ENABLE_CEPH}
@@ -58,14 +70,19 @@ time retry -d 5 -t 5 lxc exec openstack -- cloud-init status --wait
 
 echo "cloud-init finished $(date)"
 
-lxc file push ./data/base-microstack-manifest openstack/home/ubuntu/base-microstack-manifest --uid 1000
+if "${REMOTE_ACCESS_LOCATION}"
+then
+    lxc file push ./data/base-microstack-manifest openstack/home/ubuntu/base-microstack-manifest --uid 1000
+else
+    lxc file push ./data/base-microstack-manifest-local openstack/home/ubuntu/base-microstack-manifest --uid 1000
+fi
 lxc file push ./data/bootstrap_microstack.sh openstack/home/ubuntu/bootstrap_microstack.sh --uid 1000
 lxc file push ./data/configure_microstack.sh openstack/home/ubuntu/configure_microstack.sh --uid 1000
 
 lxc exec openstack -- adduser ubuntu snap_daemon
 lxc exec openstack -- su --login ubuntu -c "bash -l -c \"RISK=$RISK ENABLE_CEPH=$ENABLE_CEPH bash bootstrap_microstack.sh\""
 echo "microstack bootstrapped $(date)"
-lxc exec openstack -- su --login ubuntu -c 'bash -l -c "bash configure_microstack.sh"'
+lxc exec openstack -- su --login ubuntu -c 'bash -l -c "ENABLE_IMAGES_SYNC=$ENABLE_IMAGES_SYNC ENABLE_VAULT=$ENABLE_VAULT bash configure_microstack.sh"'
 echo "microstack configured $(date)"
 
 lxc exec openstack -- sudo -iu ubuntu sunbeam openrc

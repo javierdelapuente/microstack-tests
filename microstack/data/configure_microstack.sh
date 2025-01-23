@@ -2,9 +2,8 @@
 set -euo pipefail
 set -x
 
-ENABLE_VAULT=false
-
-echo enable_vault: ${ENABLE_VAULT}
+echo ENABLE_VAULT: ${ENABLE_VAULT}
+echo ENABLE_IMAGES_SYNC: ${ENABLE_IMAGES_SYNC}
 
 sunbeam configure -m microstack-manifest --openrc demo-openrc
 
@@ -12,7 +11,7 @@ sunbeam configure -m microstack-manifest --openrc demo-openrc
 # This is to be able to attach directly instances to the external network.
 openstack network set --share external-network
 openstack subnet set --dns-nameserver 8.8.8.8 --dhcp external-subnet
-#openstack flavor create --public m1.builder --ram 1024 --disk 20 --vcpus 2 --public
+openstack flavor create --public m1.builder --ram 1024 --disk 20 --vcpus 2 --public
 
 # VAULT
 if ${ENABLE_VAULT}
@@ -41,7 +40,11 @@ then
     # jq -r '.root_token' ~/vaultcreds.json
 fi
 
-sunbeam enable images-sync
+# To deploy Juju controllers in openstack this is very nice
+if ${ENABLE_IMAGES_SYNC}
+then
+    sunbeam enable images-sync
+fi
 
 # For Telemetrh: ceph is required to install telemetry
 # sunbeam enable telemetry

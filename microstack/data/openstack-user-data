@@ -7,6 +7,7 @@ manage_etc_hosts: localhost
 packages:
 - jq
 - retry
+- pipx
 
 package_update: true
 package_upgrade: true
