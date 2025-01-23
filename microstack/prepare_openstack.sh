@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -x
 set -euo pipefail
 
@@ -27,6 +26,8 @@ echo ENABLE_IMAGES_SYNC $ENABLE_IMAGES_SYNC
 export RISK
 export ENABLE_CEPH
 
+DATA_DIR="$(dirname "$0")/data"
+
 DEBIAN_FRONTEND=noninteractive sudo apt-get update
 DEBIAN_FRONTEND=noninteractive sudo apt-get install retry -y
 
@@ -35,10 +36,10 @@ sudo sysctl -w net.ipv4.ip_forward=1
 
 lxc delete openstack --force || :
 
-init_args=( --config=user.user-data="$(cat ./data/openstack-user-data | envsubst '$RISK,$ENABLE_CEPH' )" )
+init_args=( --config=user.user-data="$(cat "${DATA_DIR}/openstack-user-data" | envsubst '$RISK,$ENABLE_CEPH' )" )
 if "${REMOTE_ACCESS_LOCATION}"
 then
-    init_args+=( --config=user.network-config="$(cat ./data/openstack-network-config)" )
+    init_args+=( --config=user.network-config="$(cat "${DATA_DIR}/openstack-network-config" )" )
     # not sure if all of this is necessary, but...
     sudo ufw route allow in on osbr0
     sudo ufw route allow in on osbr0
@@ -72,12 +73,12 @@ echo "cloud-init finished $(date)"
 
 if "${REMOTE_ACCESS_LOCATION}"
 then
-    lxc file push ./data/base-microstack-manifest openstack/home/ubuntu/base-microstack-manifest --uid 1000
+    lxc file push "${DATA_DIR}/base-microstack-manifest" openstack/home/ubuntu/base-microstack-manifest --uid 1000
 else
-    lxc file push ./data/base-microstack-manifest-local openstack/home/ubuntu/base-microstack-manifest --uid 1000
+    lxc file push "${DATA_DIR}/base-microstack-manifest-local" openstack/home/ubuntu/base-microstack-manifest --uid 1000
 fi
-lxc file push ./data/bootstrap_microstack.sh openstack/home/ubuntu/bootstrap_microstack.sh --uid 1000
-lxc file push ./data/configure_microstack.sh openstack/home/ubuntu/configure_microstack.sh --uid 1000
+lxc file push "${DATA_DIR}/bootstrap_microstack.sh" openstack/home/ubuntu/bootstrap_microstack.sh --uid 1000
+lxc file push "${DATA_DIR}/configure_microstack.sh" openstack/home/ubuntu/configure_microstack.sh --uid 1000
 
 lxc exec openstack -- adduser ubuntu snap_daemon
 lxc exec openstack -- su --login ubuntu -c "bash -l -c \"RISK=$RISK ENABLE_CEPH=$ENABLE_CEPH bash bootstrap_microstack.sh\""
