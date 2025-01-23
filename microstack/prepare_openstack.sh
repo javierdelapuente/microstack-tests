@@ -83,7 +83,7 @@ lxc file push "${DATA_DIR}/configure_microstack.sh" openstack/home/ubuntu/config
 lxc exec openstack -- adduser ubuntu snap_daemon
 lxc exec openstack -- su --login ubuntu -c "bash -l -c \"RISK=$RISK ENABLE_CEPH=$ENABLE_CEPH bash bootstrap_microstack.sh\""
 echo "microstack bootstrapped $(date)"
-lxc exec openstack -- su --login ubuntu -c 'bash -l -c "ENABLE_IMAGES_SYNC=$ENABLE_IMAGES_SYNC ENABLE_VAULT=$ENABLE_VAULT bash configure_microstack.sh"'
+lxc exec openstack -- su --login ubuntu -c "bash -l -c \"ENABLE_IMAGES_SYNC=$ENABLE_IMAGES_SYNC ENABLE_VAULT=$ENABLE_VAULT bash configure_microstack.sh\""
 echo "microstack configured $(date)"
 
 lxc exec openstack -- sudo -iu ubuntu sunbeam openrc
