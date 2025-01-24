@@ -18,7 +18,7 @@ See https://charmhub.io/github-runner/docs/how-to-change-token for more informat
 
 Run the following script:
 ```
-./prepare_environment.sh
+./prepare_github_runner_tests.sh
 ```
 
 It should take between 20-40 minutes, depending on your machine/network.
@@ -79,9 +79,7 @@ lxc exec openstack -- su --login ubuntu
 ```
 
 ```
-cd /home/ubuntu/github/javierdelapuente/github-runner-operator
-
-juju add-model testing
+juju add-model testing localhost
 # create a base image
 BASE_IMAGE=jammy
 juju deploy github-runner-image-builder --channel=edge --revision=45 \
@@ -97,7 +95,7 @@ juju deploy github-runner-image-builder --channel=edge --revision=45 \
 --config experimental-external-build-network=external-network \
 --config app-channel="edge"
 
-cat << EOF >clouds.yaml
+cat << EOF >myclouds.yaml
 clouds:
   cloud:
     auth:
@@ -110,7 +108,7 @@ clouds:
     region_name: RegionOne
 EOF
 
-juju deploy github-runner --channel=latest/edge --config path=$GITHUB_REPOSITORY --config virtual-machines=1 --config openstack-clouds-yaml=@clouds.yaml --config openstack-flavor=m1.small --config openstack-network=external-network --config token=$GITHUB_TOKEN
+juju deploy github-runner --channel=latest/edge --config path=$GITHUB_REPOSITORY --config virtual-machines=1 --config openstack-clouds-yaml=@myclouds.yaml --config openstack-flavor=m1.small --config openstack-network=external-network --config token=$GITHUB_TOKEN
 juju integrate github-runner github-runner-image-builder
 
 

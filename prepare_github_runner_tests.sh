@@ -13,26 +13,21 @@ export ENABLE_IMAGES_SYNC=false
 
 bash ./microstack/prepare_openstack.sh
 
-lxc exec openstack -- DEBIAN_FRONTEND=noninteractive apt-get install retry -y
+lxc exec openstack -- bash -c "DEBIAN_FRONTEND=noninteractive apt-get install retry squid build-essential python3-dev -y"
 lxc exec openstack -- sed -i 's/http_access allow localhost/http_access allow all/' /etc/squid/squid.conf
 lxc exec openstack -- systemctl restart squid
 lxc exec openstack -- snap install jhack
+lxc exec openstack -- snap install charmcraft --classic
 lxc exec openstack -- snap connect jhack:dot-local-share-juju snapd
 lxc exec openstack -- sudo -iu ubuntu pipx install tox
 lxc exec openstack -- sudo -iu ubuntu pipx ensurepath
-lxc exec openstack -- sudo -i -u ubuntu bash <<'EOF'
-set -x
-set -euo pipefail
-IPADDR=$(ip -4 -j route get 2.2.2.2 | jq -r '.[] | .prefsrc') && echo $IPADDR
-cat <<EOT >> "${HOME}"/.bashrc
-. <( cat ~/demo-openrc )
-export GITHUB_REPOSITORY=${GITHUB_REPOSITORY}
-export GITHUB_TOKEN=${GITHUB_TOKEN}
-export PROXY_IP=${IPADDR}
-# Hardcoded for now
-export REGION=RegionOne
-EOT
-EOF
+
+lxc exec openstack -- sudo -i -u ubuntu bash -c 'echo export PROXY_IP="$(ip -4 -j route get 2.2.2.2 | jq -r ".[] | .prefsrc")" >> ~/.bashrc'
+lxc exec openstack -- sudo -i -u ubuntu bash -c "echo export GITHUB_REPOSITORY=${GITHUB_REPOSITORY} >> ~/.bashrc"
+lxc exec openstack -- sudo -i -u ubuntu bash -c "echo export GITHUB_TOKEN=${GITHUB_TOKEN} >> ~/.bashrc"
+lxc exec openstack -- sudo -i -u ubuntu bash -c "echo '. <( cat ~/demo-openrc )' >> ~/.bashrc"
+lxc exec openstack -- sudo -i -u ubuntu bash -c "echo REGION=RegionOne >> ~/.bashrc"
+
 
 # # lxd for the integration tests
 # There is already a controllers called localstack-localstack with
