@@ -67,7 +67,7 @@ fi
 echo "Starting at $(date)"
 lxc start openstack
 # Besides at start, sometimes we get a websocket: close, not sure why.
-time retry -d 5 -t 5 lxc exec openstack -- cloud-init status --wait
+time retry -d 5 -t 10 lxc exec openstack -- sh -c "cloud-init status --wait"
 
 echo "cloud-init finished $(date)"
 

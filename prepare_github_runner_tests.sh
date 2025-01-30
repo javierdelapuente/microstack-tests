@@ -26,7 +26,7 @@ lxc exec openstack -- sudo -i -u ubuntu bash -c 'echo export PROXY_IP="$(ip -4 -
 lxc exec openstack -- sudo -i -u ubuntu bash -c "echo export GITHUB_REPOSITORY=${GITHUB_REPOSITORY} >> ~/.bashrc"
 lxc exec openstack -- sudo -i -u ubuntu bash -c "echo export GITHUB_TOKEN=${GITHUB_TOKEN} >> ~/.bashrc"
 lxc exec openstack -- sudo -i -u ubuntu bash -c "echo '. <( cat ~/demo-openrc )' >> ~/.bashrc"
-lxc exec openstack -- sudo -i -u ubuntu bash -c "echo REGION=RegionOne >> ~/.bashrc"
+lxc exec openstack -- sudo -i -u ubuntu bash -c "echo export REGION=RegionOne >> ~/.bashrc"
 
 
 # # lxd for the integration tests
