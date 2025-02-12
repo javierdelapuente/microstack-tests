@@ -34,7 +34,7 @@ ssh-keygen -f /home/ubuntu/.ssh/id_rsa -N ''
 
 . openrc
 openstack flavor create juju-controller --public --ram 2048 --disk 20 --vcpus 1
-openstack flavor create m1.builder --public --ram 1024 --disk 20 --vcpus 2 --public
+openstack flavor create m1.builder --public --ram 1024 --disk 30 --vcpus 2 --public
 openstack flavor create m1.microk8s --public --ram 4096 --disk 20 --vcpus 2 --public
 
 # The router to attach to the external network and to connect everything
